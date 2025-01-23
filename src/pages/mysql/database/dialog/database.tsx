@@ -1,5 +1,6 @@
-import React, {forwardRef, useEffect, useImperativeHandle, useState} from 'react';
-import {Button, Form, Input, Modal, Select} from 'antd';
+import React, {forwardRef, useCallback, useEffect, useImperativeHandle, useState} from 'react';
+import {Button, Form, Input, message, Modal, Select} from 'antd';
+import {apiCreateDatabase} from "../../../../api/easydbtool/database-api.ts";
 
 const {Option} = Select;
 
@@ -14,44 +15,65 @@ interface MySQLDatabaseDialogProps {
 
 export interface MySQLDatabaseDialogRef {
     showModal: () => void,
-    setIsEdit: (editMode: boolean) => void
+    editModal: (record: MySQLDatabaseFormData) => void
 }
 
 const MySQLDatabaseDialog: React.ForwardRefRenderFunction<MySQLDatabaseDialogRef, MySQLDatabaseDialogProps> = (props, ref) => {
-    // Determine whether the current mode is in editing
-    const [isEdit, setIsEdit] = useState(false);
+    // antd message
+    const [messageApi, contextHolder] = message.useMessage();
+
     // Determine whether open the dialog
     const [isModalOpen, setIsModalOpen] = useState(false)
     // form element
     const [form] = Form.useForm<MySQLDatabaseFormData>();
-
-    // expose show modal to the parent component
-    useImperativeHandle(ref, () => ({
-        showModal,
-        setIsEdit
-
-    }), [isEdit])
-
-    useEffect(() => {
-    }, []);
+    const formInitVal = {
+        name: '',
+        charset: 'utf8mb4'
+    }
 
     //open the dialog
     const showModal = () => {
         setIsModalOpen(true)
     }
+    const editModal = useCallback((record: MySQLDatabaseFormData) => {
+        form.setFieldsValue({
+            name: record.name,
+            charset: record.charset
+        })
+    }, [form])
+
+    // expose show modal to the parent component
+    useImperativeHandle(ref, () => ({
+        showModal,
+        editModal
+
+    }), [editModal])
+
+    useEffect(() => {
+    }, []);
+
     // submit the dialog
-    const handleModalOK = () => {
+    const handleModalOK = async () => {
         // props.loadDatabase()
-        console.log('ok',isEdit)
-        // setIsModalOpen(false)
+        const formVal = await form.validateFields()
+        //remote api create database
+        const resp = await apiCreateDatabase(formVal)
+        if (resp.code != 200) {
+            messageApi.error(resp.message)
+        }
+        //load database
+        props.loadDatabase()
+        setIsModalOpen(false)
     }
     // cancel the dialog
     const handleModalCancel = () => {
         setIsModalOpen(false)
+        form.resetFields()
     }
 
     return (
         <>
+            {contextHolder}
             <Button type="primary" onClick={showModal}>新建数据库</Button>
             <Modal title={"数据库"} open={isModalOpen} onOk={handleModalOK} onCancel={handleModalCancel}>
                 <Form
@@ -59,6 +81,7 @@ const MySQLDatabaseDialog: React.ForwardRefRenderFunction<MySQLDatabaseDialogRef
                     wrapperCol={{span: 16}}
                     form={form}
                     name="control-hooks"
+                    initialValues={formInitVal}
                 >
                     <Form.Item name="name" label="数据库名称" rules={[{required: true}]}>
                         <Input/>

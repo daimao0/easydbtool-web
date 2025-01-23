@@ -1,6 +1,6 @@
 import React, {forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState} from 'react';
 import {Button, Form, Input, Modal, Popover} from 'antd';
-import {apiTestConnect} from "../../../../api/easydbtool/datasource/api.ts";
+import {apiTestConnect} from "../../../../api/easydbtool/datasource-api.ts";
 import {getArrCookie, setArrCookie} from "../../../../utils/cookie-util.ts";
 
 export type DatasourceType = {
@@ -69,10 +69,8 @@ const DatasourceDialog: React.ForwardRefRenderFunction<DatasourceDialogRef, Data
 
     const handleOk = async () => {
         const id = datasourceFormInitValue?.id
-        console.log('ok', datasourceFormInitValue)
         const values = await datasourceForm.validateFields();
         const arrCookie = getArrCookie<DatasourceType>('datasource');
-        console.log(111, id)
         // edit datasource
         for (let i = 0; i < arrCookie.length; i++) {
             if (id === arrCookie[i].id) {

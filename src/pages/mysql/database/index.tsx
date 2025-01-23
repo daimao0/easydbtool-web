@@ -1,12 +1,12 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Button, Flex, message, Popconfirm, Table} from 'antd';
 import type {TableProps} from 'antd';
+import {Button, Flex, message, Popconfirm, Table} from 'antd';
 import {useParams} from "react-router-dom";
-import {apiConnect} from "../../../api/easydbtool/datasource/api.ts";
+import {apiConnect} from "../../../api/easydbtool/datasource-api.ts";
 import {getArrCookie} from "../../../utils/cookie-util.ts";
 import {DatasourceType} from "../datasource/dialog/datasource.tsx";
 import {setSession} from "../../../utils/session-utils.ts";
-import {apiListDatabase} from "../../../api/easydbtool/database/api.ts";
+import {apiDropDatabase, apiListDatabase} from "../../../api/easydbtool/database-api.ts";
 import MySQLDatabaseDialog, {MySQLDatabaseDialogRef} from "./dialog/database.tsx";
 
 interface DatabaseTableDataType {
@@ -21,7 +21,7 @@ const MySQLDatabase: React.FC = () => {
             title: '数据库',
             dataIndex: 'name',
             key: 'name',
-            render: (text) => <a>{text}</a>,
+            render: (text) => <a href={`/home/mysql/${datasourceId}/database/${text}/table`}>{text}</a>,
         },
         {
             title: '操作',
@@ -29,9 +29,11 @@ const MySQLDatabase: React.FC = () => {
             render: (_, record) => (
 
                 <Flex gap="small" wrap>
-                    <Button size={"small"} onClick={()=>{handleEditDatabase(record)}}>编辑</Button>
+                    <Button size={"small"} onClick={() => {
+                        handleEditDatabase(record)
+                    }}>编辑</Button>
                     <Popconfirm title={"你确定要删除吗？"}
-                                onConfirm={() => {}}
+                                onConfirm={() => handleDropDatabase(record.name)}
                                 okText={"确定"}
                                 cancelText={"取消"}
                     >
@@ -42,16 +44,14 @@ const MySQLDatabase: React.FC = () => {
         },
     ];
 
-
     //message render
-    const [messageApi,contextHolder] = message.useMessage()
+    const [messageApi, contextHolder] = message.useMessage()
     // loading render
     const [loading, setLoading] = useState(false)
     // current datasource id
     const datasourceId = useParams().datasourceId
     // table data to render the table component
     const [tableData, setTableData] = useState<DatabaseTableDataType[]>()
-
     //ref
     const databaseDialogRef = useRef<MySQLDatabaseDialogRef>(null)
 
@@ -60,12 +60,9 @@ const MySQLDatabase: React.FC = () => {
         const arrCookie = getArrCookie<DatasourceType>('datasource');
         for (const item of arrCookie) {
             if (item.id === datasourceId) {
-                await apiConnect(item).then(resp=>{
-                    if (resp.code!==200){
-                        messageApi.open({
-                            type: 'error',
-                            content: resp.message,
-                        })
+                await apiConnect(item).then(resp => {
+                    if (resp.code !== 200) {
+                        messageApi.error(resp.message)
                     }
                 })
             }
@@ -73,7 +70,7 @@ const MySQLDatabase: React.FC = () => {
     }, [datasourceId])
     const loadDatabase = async () => {
         const databaseResp = await apiListDatabase()
-        if (databaseResp){
+        if (databaseResp) {
             const tableDataParam = databaseResp.data.map((item) => ({
                 key: item.name,
                 name: item.name
@@ -93,19 +90,29 @@ const MySQLDatabase: React.FC = () => {
             await loadDatabase()
         } catch (err) {
             console.log("Failed to initialize data source", err)
-        }finally {
+        } finally {
             setLoading(false)
         }
-    },[connect, datasourceId])
+    }, [connect, datasourceId])
 
-    const handleEditDatabase=(record:DatabaseTableDataType)=>{
-        databaseDialogRef.current?.setIsEdit(true)
+    // the click function when drop database
+    const handleDropDatabase = async (databaseName: string) => {
+        const resp = await apiDropDatabase(databaseName)
+        if (resp.code != 200) {
+            messageApi.error(resp.message)
+        }
+        await loadDatabase()
+    }
+
+    const handleEditDatabase = (record: DatabaseTableDataType) => {
         databaseDialogRef.current?.showModal()
+        databaseDialogRef.current?.editModal({name: record.name,charset:"utf8mb4"})
         console.log(record)
     }
 
     useEffect(() => {
-        initializeDataSource().then(() => {})
+        initializeDataSource().then(() => {
+        })
     }, [initializeDataSource]);
 
     return (

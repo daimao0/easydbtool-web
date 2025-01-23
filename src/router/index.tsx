@@ -26,7 +26,7 @@ const router = createBrowserRouter([
                 path: ":datasourceId/database",
                 element: <MySQLDatabase/>
             }, {
-                path: "table",
+                path: ":datasourceId/database/:databaseName/table",
                 element: <MySQLTable/>
             }]
         }, {

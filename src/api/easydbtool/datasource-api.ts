@@ -1,4 +1,4 @@
-import easyDbToolApi, {Resp} from "../../api.ts";
+import easyDbToolApi, {Resp} from "../api-config.ts";
 
 // testConnect api params
 type TestConnectRequest = {

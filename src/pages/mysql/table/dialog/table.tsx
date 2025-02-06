@@ -1,158 +1,52 @@
-import React, {forwardRef, useContext, useEffect, useImperativeHandle, useRef, useState} from 'react';
-import {GetRef, InputRef, Modal, Button, Form, Input, Popconfirm, Table, TableProps} from 'antd';
-
+import React, {forwardRef, useContext, useImperativeHandle, useState} from 'react';
+import {Col, Form, Input, message, Modal, Row, Tabs, TabsProps} from 'antd';
+import MySQLColumn, {MySQLColumnRef} from "./column/column.tsx";
+import {apiCreateTable, TableVO} from "../../../../api/easydbtool/table-api.ts";
+import {useParams} from "react-router-dom";
+import MySQLIndex from "./index";
+import {TableContext} from "../context/table-context.ts";
+import {HTTP_OK} from "../../../../api/code.ts";
 
 export interface MySQLTableDialogRef {
     showModal: () => void
-    editModal: () => void
+    editModal: (tableVO: TableVO) => void
 }
 
-type FormInstance<T> = GetRef<typeof Form<T>>;
 
-const EditableContext = React.createContext<FormInstance<any> | null>(null);
-
-interface Item {
-    key: string;
-    name: string;
-    type: string;
-    size: string
-    points: string;
-    default: string;
-    comment: string;
-}
-
-interface EditableRowProps {
-    index: number;
-}
-
-const EditableRow: React.FC<EditableRowProps> = ({index, ...props}) => {
-    const [form] = Form.useForm();
-    return (
-        <Form form={form} component={false}>
-            <EditableContext.Provider value={form}>
-                <tr {...props} />
-            </EditableContext.Provider>
-        </Form>
-    );
-};
-
-interface EditableCellProps {
-    title: React.ReactNode;
-    editable: boolean;
-    dataIndex: keyof Item;
-    record: Item;
-    handleSave: (record: Item) => void;
-}
-
-const EditableCell: React.FC<React.PropsWithChildren<EditableCellProps>> = ({
-                                                                                title,
-                                                                                editable,
-                                                                                children,
-                                                                                dataIndex,
-                                                                                record,
-                                                                                handleSave,
-                                                                                ...restProps
-                                                                            }) => {
-    const [editing, setEditing] = useState(false);
-    const inputRef = useRef<InputRef>(null);
-    const form = useContext(EditableContext)!;
-
-    useEffect(() => {
-        if (editing) {
-            inputRef.current?.focus();
-        }
-    }, [editing]);
-
-    const toggleEdit = () => {
-        setEditing(!editing);
-        form.setFieldsValue({[dataIndex]: record[dataIndex]});
-    };
-
-    const save = async () => {
-        try {
-            const values = await form.validateFields();
-
-            toggleEdit();
-            handleSave({...record, ...values});
-        } catch (errInfo) {
-            console.log('Save failed:', errInfo);
-        }
-    };
-
-    let childNode = children;
-
-    if (editable) {
-        childNode = editing ? (
-            <Form.Item
-                style={{margin: 0}}
-                name={dataIndex}
-                rules={[{required: true, message: `${title} is required.`}]}
-            >
-                <Input ref={inputRef} onPressEnter={save} onBlur={save}/>
-            </Form.Item>
-        ) : (
-            <div
-                className="editable-cell-value-wrap"
-                style={{paddingInlineEnd: 24}}
-                onClick={toggleEdit}
-            >
-                {children}
-            </div>
-        );
-    }
-
-    return <td {...restProps}>{childNode}</td>;
-};
-
-interface DataType {
-    key: React.Key;
-    name: string;
-    type: string;
-    size: string
-    points: string;
-    default: string;
-    comment: string;
-}
-
-type ColumnTypes = Exclude<TableProps<DataType>['columns'], undefined>;
-
-const MySQLTableDialog: React.ForwardRefRenderFunction<MySQLTableDialogRef, {}> = (props, ref) => {
-
+const MySQLTableDialog: React.ForwardRefRenderFunction<MySQLTableDialogRef> = (_, ref) => {
+    const [messageApi, contextHolder] = message.useMessage()
+    // the databaseName is the name of the database
+    const databaseName = useParams().databaseName as string
+    // dialog status
     const [isModalOpen, setIsModalOpen] = useState(false);
+    // the dialog is edit or not
     const [isEdit, setIsEdit] = useState(false)
-    const [dataSource, setDataSource] = useState<DataType[]>([
-        {
-            key: '0',
-            name: 'id',
-            type: 'bigint',
-            size: '20',
-            points: '',
-            default: '',
-            comment: '主键',
-        },
-        {
-            key: '1',
-            name: 'name',
-            type: 'varchar',
-            size: '255',
-            points: '',
-            default: '',
-            comment: '主键',
-        },
-    ]);
+    // mysqlColumnRef is the ref of the mysqlColumn
+    const mysqlColumnRef = React.useRef<MySQLColumnRef>(null)
+    // tableForm is the form of the table
+    const tableForm = Form.useForm()[0]
 
-    const [count, setCount] = useState(2);
-
+    const {columns, setTableName, indexesRequest, loadTables} = useContext(TableContext);
     //  useImperativeHandle expose ref
     useImperativeHandle(ref, () => ({
         showModal,
         editModal
     }));
 
+
     // editModal ,
-    const editModal = () => {
-        setIsEdit(true)
-        setIsModalOpen(true);
+    const editModal = (tableVO: TableVO) => {
+//         setIsEdit(true)
+//         setIsModalOpen(true);
+//         console.log(1,tableVO)
+//         setTableName(tableVO.name)
+//         tableForm.setFieldsValue(tableVO)
+// // 使用Array.prototype.map配合对象解构生成目标格式
+//         const indexedObject = tableVO.columns.map((value, index) => ({ [index + 1]: value })).reduce((acc, cur) => {
+//             return {...acc, ...cur};
+//         }, {});
+//         console.log(indexedObject)
+        // mysqlColumnRef.current?.setDataSource(tableVO.columns)
     };
 
     // showModal open the dialog,
@@ -163,7 +57,29 @@ const MySQLTableDialog: React.ForwardRefRenderFunction<MySQLTableDialogRef, {}> 
 
     // handleOk dialog confirm
     const handleOk = () => {
-        setIsModalOpen(false);
+        const columnForm = mysqlColumnRef.current?.getColumnForm()
+        tableForm.validateFields().then(() => {
+            columnForm?.validateFields().then(() => {
+                setIsModalOpen(false)
+                const tableCreateRequest = {
+                    name: tableForm.getFieldValue('name'),
+                    desc: tableForm.getFieldValue('desc'),
+                    columns: columns,
+                    indexes: indexesRequest
+                }
+                apiCreateTable(databaseName, tableCreateRequest).then(r => {
+                    if (r.code == HTTP_OK) {
+                        messageApi.success("创建成功").then()
+                    } else {
+                        messageApi.error(r.message).then()
+                    }
+                }).catch(e => messageApi.error(e))
+                    .finally(() => {
+                        loadTables()
+                    })
+            })
+        })
+
     };
 
     // handleCancel dialog cancel
@@ -171,121 +87,53 @@ const MySQLTableDialog: React.ForwardRefRenderFunction<MySQLTableDialogRef, {}> 
         setIsModalOpen(false);
     };
 
-    // handleDelete delete table row
-    const handleDelete = (key: React.Key) => {
-        const newData = dataSource.filter((item) => item.key !== key);
-        setDataSource(newData);
-    };
+    const tabItems: TabsProps['items'] = [{
+        key: '1',
+        label: '字段信息',
+        children: (
+            <MySQLColumn ref={mysqlColumnRef}/>
+        ),
+    }, {
+        key: '2',
+        label: '索引信息',
+        children: (
+            <MySQLIndex/>
+        ),
 
-    const defaultColumns: (ColumnTypes[number] & { editable?: boolean; dataIndex: string })[] = [
-        {
-            title: '字段名称',
-            dataIndex: 'name',
-            editable: true,
-        },
-        {
-            title: '字段类型',
-            dataIndex: 'type',
-            editable: true,
-        },
-        {
-            title: '长度',
-            dataIndex: 'size',
-            editable: true,
-        },
-        {
-            title: '小数点',
-            dataIndex: 'points',
-            editable: true,
-        },
-        {
-            title: '默认值',
-            dataIndex: 'default',
-            editable: true,
-        },
-        {
-            title: '注释',
-            dataIndex: 'comment',
-            editable: true,
-        },
-        {
-            title: '操作',
-            dataIndex: 'operation',
-            render: (_, record) =>
-                dataSource.length >= 1 ? (
-                    <Popconfirm title="确认删除?" onConfirm={() => handleDelete(record.key)}>
-                        <a>删除</a>
-                    </Popconfirm>
-                ) : null,
-        },
-    ];
+    }]
 
-    const handleAdd = () => {
-        const newData: DataType = {
-            key: 2,
-            name: 'id',
-            type: 'bigint',
-            size: '20',
-            points: '',
-            default: '',
-            comment: '主键',
-        };
-        setDataSource([...dataSource, newData]);
-        setCount(count + 1);
-    };
-
-    const handleSave = (row: DataType) => {
-        const newData = [...dataSource];
-        const index = newData.findIndex((item) => row.key === item.key);
-        const item = newData[index];
-        newData.splice(index, 1, {
-            ...item,
-            ...row,
-        });
-        setDataSource(newData);
-    };
-
-    const components = {
-        body: {
-            row: EditableRow,
-            cell: EditableCell,
-        },
-    };
-
-    const columns = defaultColumns.map((col) => {
-        if (!col.editable) {
-            return col;
-        }
-        return {
-            ...col,
-            onCell: (record: DataType) => ({
-                record,
-                editable: col.editable,
-                dataIndex: col.dataIndex,
-                title: col.title,
-                handleSave,
-            }),
-        };
-    });
+    const onFormValuesChange = () => {
+        const map = tableForm?.getFieldsValue()
+        setTableName(map.name)
+    }
 
     return (
-
-        <Modal width={1200} title={isEdit ? "编辑表" : "新增表"} maskClosable={false} open={isModalOpen} onOk={handleOk}
-               onCancel={handleCancel}>
-            <div>
-                <Button onClick={handleAdd} type="primary" style={{marginBottom: 16}}>
-                    添加字段
-                </Button>
-                <Table<DataType>
-                    components={components}
-                    rowClassName={() => 'editable-row'}
-                    bordered
-                    dataSource={dataSource}
-                    columns={columns as ColumnTypes}
-                />
-            </div>
-        </Modal>
-
+        <>
+            {contextHolder}
+            <Modal width={1200} title={isEdit ? "编辑表" : "新增表"} maskClosable={false} open={isModalOpen}
+                   onOk={handleOk}
+                   onCancel={handleCancel}>
+                <Form form={tableForm} onValuesChange={onFormValuesChange}>
+                    <Row>
+                        <Col span={8}>
+                            <Form.Item name={`name`} label={`表名`}
+                                       rules={[{required: true, message: '表名不能为空',},]}>
+                                <Input placeholder="请输入表名"/>
+                            </Form.Item>
+                        </Col>
+                        <Col span={2}/>
+                        <Col span={8}>
+                            <Form.Item name={`desc`} label={`表描述`}
+                                       rules={[{required: true, message: '表描述不能为空',},]}>
+                                <Input placeholder="请输入表的描述"/>
+                            </Form.Item>
+                        </Col>
+                    </Row>
+                </Form>
+                <Tabs defaultActiveKey="1" type={"card"} items={tabItems} onChange={() => {
+                }}/>
+            </Modal>
+        </>
     );
 };
 

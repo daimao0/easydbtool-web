@@ -50,7 +50,7 @@ const MySQLDatabase: React.FC = () => {
     const [loading, setLoading] = useState(false)
     // current datasource id
     const datasourceId = useParams().datasourceId
-    // table data to render the table component
+    // table rows to render the table component
     const [tableData, setTableData] = useState<DatabaseTableDataType[]>()
     //ref
     const databaseDialogRef = useRef<MySQLDatabaseDialogRef>(null)
@@ -89,7 +89,7 @@ const MySQLDatabase: React.FC = () => {
             // list database to render table
             await loadDatabase()
         } catch (err) {
-            console.log("Failed to initialize data source", err)
+            console.log("Failed to initialize rows source", err)
         } finally {
             setLoading(false)
         }

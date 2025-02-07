@@ -16,9 +16,9 @@ export type TableVO = {
     name: string,
     desc: string,
     createSQL: string,
-    database:{name:string}
+    database: { name: string }
     columns: ColumnCreateRequest[]
-    indexes: {name:string,unique:boolean,Comment:string,columns:ColumnCreateRequest[]}[]
+    indexes: { name: string, unique: boolean, Comment: string, columns: ColumnCreateRequest[] }[]
 }
 
 export const apiGetTable = async (databaseName: string, tableName: string): Promise<Resp<TableVO>> => {
@@ -43,5 +43,17 @@ export const apiCreateTable = async (databaseName: string, request: CreateTableD
  */
 export const apiDropTable = async (databaseName: string, tableName: string) => {
     const resp = await easyDbToolApi.delete(`/api/v1/database/${databaseName}/table/${tableName}`);
+    return resp.data;
+}
+
+export const apiPageTableData = async (databaseName: string, tableName: string, page: number, size: number) => {
+    const resp = await easyDbToolApi.get(`/api/v1/database/${databaseName}/table/${tableName}/page`, {
+        params: {
+            databaseName,
+            tableName,
+            page,
+            size
+        }
+    });
     return resp.data;
 }

@@ -1,5 +1,5 @@
 import {createBrowserRouter, Navigate} from "react-router-dom";
-import {Home, MySQL, MySQLDatabase, MySQLDatasource, MySQLTable} from "./lazy.tsx";
+import {Home, MySQL, MySQLDatabase, MySQLDatasource, MySQLTable, MySQLTableRows} from "./lazy.tsx";
 import Guide from "../pages/home/guide";
 
 const router = createBrowserRouter([
@@ -28,6 +28,9 @@ const router = createBrowserRouter([
             }, {
                 path: ":datasourceId/database/:databaseName/table",
                 element: <MySQLTable/>
+            }, {
+                path: ":datasourceId/database/:databaseName/table/:tableName",
+                element: <MySQLTableRows/>
             }]
         }, {
             path: "a",

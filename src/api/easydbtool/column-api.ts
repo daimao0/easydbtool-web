@@ -5,15 +5,15 @@ export type ColumnCreateRequest = {
     // Column type
     type: string
     // Size column size
-    Size: number
+    size: number
     // Points column points for decimal type
-    Points:string
+    points:string
     // Default column default value
-    Default: string
+    default: string
     // NotNull column not null
-    NotNull: boolean
+    notNull: boolean
     // Comment column comment
-    Comment: string
+    comment: string
     // Pk column pk
-    Pk: boolean
+    pk: boolean
 }

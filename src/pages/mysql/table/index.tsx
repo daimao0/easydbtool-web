@@ -18,13 +18,16 @@ interface DataType {
 
 
 const MySQLTable: React.FC = () => {
+    // current datasource id
+    const datasourceId = useParams().datasourceId
+    const databaseName = useParams().databaseName
     const [messageApi, contextHolder] = message.useMessage();
     const columns: TableProps<DataType>['columns'] = [
         {
             title: '表名',
             dataIndex: 'name',
             key: 'name',
-            render: (text) => <a>{text}</a>,
+            render: (text) => <a href={`/home/mysql/${datasourceId}/database/${databaseName}/table/${text}`}>{text}</a>,
         },
         {
             title: '操作',
@@ -49,7 +52,6 @@ const MySQLTable: React.FC = () => {
             ),
         },
     ];
-    const databaseName = useParams().databaseName
 
     const [tableData, setTableData] = React.useState<DataType[]>([])
     const tableDialogRef = React.useRef<MySQLTableDialogRef>(null)

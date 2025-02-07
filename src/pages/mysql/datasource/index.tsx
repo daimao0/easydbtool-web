@@ -53,7 +53,7 @@ const MySQLDatasource: React.FC = () => {
     ];
     //
 
-    //datasource data
+    //datasource rows
     const [datasource, setDatasource] = useState<DataType[]>([])
 
     // load datasource to table render

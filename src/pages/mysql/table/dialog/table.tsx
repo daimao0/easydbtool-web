@@ -36,17 +36,34 @@ const MySQLTableDialog: React.ForwardRefRenderFunction<MySQLTableDialogRef> = (_
 
     // editModal ,
     const editModal = (tableVO: TableVO) => {
-//         setIsEdit(true)
-//         setIsModalOpen(true);
-//         console.log(1,tableVO)
-//         setTableName(tableVO.name)
-//         tableForm.setFieldsValue(tableVO)
-// // 使用Array.prototype.map配合对象解构生成目标格式
-//         const indexedObject = tableVO.columns.map((value, index) => ({ [index + 1]: value })).reduce((acc, cur) => {
-//             return {...acc, ...cur};
-//         }, {});
-//         console.log(indexedObject)
-        // mysqlColumnRef.current?.setDataSource(tableVO.columns)
+        setIsEdit(true)
+        setIsModalOpen(true);
+        // mysqlColumnRef.current?.initColumnsInEdit()
+        const dataSource = tableVO.columns.map((column, index) => ({
+            ...column,
+            key: index + 1,
+        }));
+        if (mysqlColumnRef.current) {
+            mysqlColumnRef.current?.setDataSource(dataSource);
+            // 使用form实例直接设置表单字段值
+            mysqlColumnRef.current?.getColumnForm().setFieldsValue(
+                dataSource.reduce((acc, record) => {
+                    acc[String(record.key)] = {
+                        name: record.name,
+                        type: record.type,
+                        size: record.size,
+                        points: record.points,
+                        notnull: record.notNull,
+                        default: record.default,
+                        comment: record.comment,
+                        pk: record.pk,
+                    };
+                    return acc;
+                }, {})
+            );
+        } else {
+            console.error("MySQLColumn component ref is not ready.");
+        }
     };
 
     // showModal open the dialog,
